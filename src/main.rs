@@ -1,6 +1,5 @@
-use bitvec::prelude::*;
+//use bitvec::prelude::*;
 
-use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 use std::env;
 use std::error::Error;
@@ -8,37 +7,7 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 
-#[derive(Debug, Copy, Clone)]
-pub struct ByteFreq {
-    pub byte: u8,
-    pub freq: usize,
-}
-
-impl ByteFreq {
-    fn new(byte: u8, freq: usize) -> ByteFreq {
-        ByteFreq { byte, freq }
-    }
-}
-
-impl Eq for ByteFreq {}
-
-impl Ord for ByteFreq {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.freq.cmp(&other.freq)
-    }
-}
-
-impl PartialOrd for ByteFreq {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for ByteFreq {
-    fn eq(&self, other: &Self) -> bool {
-        self.freq == other.freq
-    }
-}
+use huffman::structs::ByteFreq;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
