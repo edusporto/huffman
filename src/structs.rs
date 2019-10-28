@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Info {
     Byte(u8),
     Freq(usize),
@@ -23,18 +23,15 @@ impl Node {
     }
 
     fn insert(&mut self, left: bool, node: Node) -> Result<(), ()> {
-        let node_location: &mut Option<Box<Node>> = if left { &mut self.l } else { &mut self.r };
+        let node_location = if left { &mut self.l } else { &mut self.r };
 
         match node_location {
-            Some(_) => {
-                return Err(());
-            }
+            Some(_) => Err(()),
             None => {
                 *node_location = Some(Box::new(node));
+                Ok(())
             }
         }
-
-        Ok(())
     }
 
     pub fn insert_l(&mut self, node: Node) -> Result<(), ()> {
@@ -43,6 +40,26 @@ impl Node {
 
     pub fn insert_r(&mut self, node: Node) -> Result<(), ()> {
         self.insert(false, node)
+    }
+}
+
+impl Eq for Node {}
+
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.info.cmp(&other.info)
+    }
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        self.info == other.info
     }
 }
 
@@ -76,4 +93,10 @@ impl PartialEq for ByteFreq {
     fn eq(&self, other: &Self) -> bool {
         self.freq == other.freq
     }
+}
+
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+pub enum PqPiece {
+    ByteFreq(ByteFreq),
+    Node(Node),
 }

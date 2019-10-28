@@ -4,10 +4,10 @@ use std::collections::{BinaryHeap, HashMap};
 use std::env;
 use std::error::Error;
 use std::fs::File;
-use std::io;
 use std::io::prelude::*;
+use std::cmp::Reverse;
 
-use huffman::structs::ByteFreq;
+use huffman::structs::{ByteFreq, PqPiece, Info, Node};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
@@ -30,14 +30,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut freq_pq: BinaryHeap<_> = freq
         .iter()
-        .map(|(&byte, &freq)| ByteFreq { byte, freq })
+        .map(|(&byte, &freq)| PqPiece::ByteFreq(ByteFreq { byte, freq }))
+        .map(Reverse)
         .collect();
 
-    /*while let Some(a) = freq_pq.pop() {
-        println!("{:?}", a);
+    while freq_pq.len() >= 2 {
+        let Reverse(a) = freq_pq.pop().unwrap();
+        let Reverse(b) = freq_pq.pop().unwrap();
+
+        // TODO: Create function to compare ByteFreq to Node
     }
 
-    println!("{:?}", freq_pq);*/
+    for val in freq_pq.into_sorted_vec() {
+        println!("{:?}", val);
+    }
 
     Ok(())
 }
