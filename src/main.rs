@@ -1,13 +1,13 @@
 //use bitvec::prelude::*;
 
+use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap};
 use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
-use std::cmp::Reverse;
 
-use huffman::structs::{ByteFreq, PqPiece, Info, Node};
+use huffman::structs::{ByteFreq, Info, Node, PqPiece};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
@@ -38,7 +38,24 @@ fn main() -> Result<(), Box<dyn Error>> {
         let Reverse(a) = freq_pq.pop().unwrap();
         let Reverse(b) = freq_pq.pop().unwrap();
 
-        // TODO: Create function to compare ByteFreq to Node
+        let freq_a = a.get_freq();
+        let freq_b = b.get_freq();
+
+        let node_l = match a {
+            PqPiece::ByteFreq(bf) => Node::new(Info::Byte(bf.byte)),
+            PqPiece::Node(node) => node,
+        };
+
+        let node_r = match b {
+            PqPiece::ByteFreq(bf) => Node::new(Info::Byte(bf.byte)),
+            PqPiece::Node(node) => node,
+        };
+
+        let mut node = Node::new(Info::Freq(freq_a + freq_b));
+        node.insert_l(node_l).unwrap();
+        node.insert_r(node_r).unwrap();
+
+        freq_pq.push(Reverse(PqPiece::Node(node)));
     }
 
     for val in freq_pq.into_sorted_vec() {

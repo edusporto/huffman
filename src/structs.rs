@@ -95,8 +95,40 @@ impl PartialEq for ByteFreq {
     }
 }
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug)]
 pub enum PqPiece {
     ByteFreq(ByteFreq),
     Node(Node),
+}
+
+impl Eq for PqPiece {}
+
+impl PqPiece {
+    pub fn get_freq(&self) -> usize {
+        match self {
+            PqPiece::ByteFreq(bf) => bf.freq,
+            PqPiece::Node(node) => match node.info {
+                Info::Freq(f) => f,
+                Info::Byte(_) => panic!("Can't get frequency from byte node"),
+            }
+        }
+    }
+}
+
+impl Ord for PqPiece {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.get_freq().cmp(&other.get_freq())
+    }
+}
+
+impl PartialOrd for PqPiece {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for PqPiece {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
 }
