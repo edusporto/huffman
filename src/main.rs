@@ -1,7 +1,7 @@
-//use bitvec::prelude::*;
+use bitvec::prelude::*;
 
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::env;
 use std::error::Error;
 use std::fs::File;
@@ -56,6 +56,23 @@ fn main() -> Result<(), Box<dyn Error>> {
         node.insert_r(node_r).unwrap();
 
         freq_pq.push(Reverse(PqPiece::Node(node)));
+    }
+
+    let mut code_map: HashMap<u8, BitVec> = HashMap::new();
+    let mut bitvec: BitVec<BigEndian, u8> = BitVec::new();
+    let mut queue: VecDeque<&Node> = VecDeque::new();
+
+    let Reverse(first) = freq_pq.peek().unwrap();
+    let first = match first {
+        PqPiece::Node(node) => node,
+        PqPiece::ByteFreq(_) => {
+            panic!("The last piece remaining of the priority queue isn't a node")
+        }
+    };
+    queue.push_back(first);
+
+    while !queue.is_empty() {
+        
     }
 
     for val in freq_pq.into_sorted_vec() {

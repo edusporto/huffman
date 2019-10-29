@@ -110,7 +110,7 @@ impl PqPiece {
             PqPiece::Node(node) => match node.info {
                 Info::Freq(f) => f,
                 Info::Byte(_) => panic!("Can't get frequency from byte node"),
-            }
+            },
         }
     }
 }
