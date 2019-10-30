@@ -60,9 +60,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut code_map: HashMap<u8, BitVec> = HashMap::new();
     let mut bitvec: BitVec<BigEndian, u8> = BitVec::new();
-    let mut queue: VecDeque<&Node> = VecDeque::new();
+    let mut queue: VecDeque<Node> = VecDeque::new();
 
-    let Reverse(first) = freq_pq.peek().unwrap();
+    let Reverse(first) = freq_pq.pop().unwrap();
     let first = match first {
         PqPiece::Node(node) => node,
         PqPiece::ByteFreq(_) => {
@@ -71,8 +71,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
     queue.push_back(first);
 
-    while !queue.is_empty() {
-        
+    while let Some(node) = queue.pop_back() {
+        let (node_l, node_r) = (node.l, node.r);
     }
 
     for val in freq_pq.into_sorted_vec() {
