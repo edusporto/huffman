@@ -1,7 +1,7 @@
 use bitvec::prelude::*;
 
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap, VecDeque};
+use std::collections::{BinaryHeap, HashMap};
 use std::env;
 use std::error::Error;
 use std::fs::File;
@@ -59,25 +59,43 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let mut code_map: HashMap<u8, BitVec> = HashMap::new();
-    let mut bitvec: BitVec<BigEndian, u8> = BitVec::new();
-    let mut queue: VecDeque<Node> = VecDeque::new();
+    let mut stack: Vec<(Node, BitVec)> = Vec::new();
 
     let Reverse(first) = freq_pq.pop().unwrap();
     let first = match first {
         PqPiece::Node(node) => node,
         PqPiece::ByteFreq(_) => {
-            panic!("The last piece remaining of the priority queue isn't a node")
+            panic!("The last piece remaining of the priority queue shouldn't be a node")
         }
     };
-    queue.push_back(first);
+    stack.push((first, BitVec::new()));
 
-    while let Some(node) = queue.pop_back() {
-        let (node_l, node_r) = (node.l, node.r);
+    while let Some(stack_piece) = stack.pop() {
+        let (node, bitvec) = stack_piece;
+        let (node_l, node_r) = (node.l.unwrap(), node.r.unwrap());
+        let (mut bitvec_l, mut bitvec_r) = (bitvec.clone(), bitvec.clone());
+        bitvec_l.push(false);
+        bitvec_r.push(true);
+
+        if let Info::Byte(b) = node_l.info {
+            code_map.insert(b, bitvec_l);
+        } else {
+            stack.push((*node_l, bitvec_l));
+        }
+
+        if let Info::Byte(b) = node_r.info {
+            code_map.insert(b, bitvec_r);
+        } else {
+            stack.push((*node_r, bitvec_r));
+        }
     }
 
-    for val in freq_pq.into_sorted_vec() {
-        println!("{:?}", val);
-    }
+    let mut compressed = BitVec::<BigEndian, u8>::new();
+    content.iter().for_each(|b| {
+        compressed.append(&mut code_map.get(&b).unwrap().clone());
+    });
+
+    println!("{:?}", compressed);
 
     Ok(())
 }
