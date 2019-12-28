@@ -1,5 +1,9 @@
 use std::cmp::Ordering;
 
+/// Defines what can be stored inside a Node.
+/// The Huffman tree in this program consists of nodes that
+/// are either bytes or usizes which represent the added frequencies
+/// of all child byte nodes.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Info {
     Byte(u8),
@@ -63,6 +67,8 @@ impl PartialEq for Node {
     }
 }
 
+/// Struct that will initially populate the priority queue which will generate
+/// the Huffman Tree.
 #[derive(Debug, Copy, Clone)]
 pub struct ByteFreq {
     pub byte: u8,
@@ -95,6 +101,7 @@ impl PartialEq for ByteFreq {
     }
 }
 
+/// Represents the nodes of the priority queue which will generate the Huffman Tree.
 #[derive(Debug)]
 pub enum PqPiece {
     ByteFreq(ByteFreq),
