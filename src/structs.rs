@@ -45,6 +45,13 @@ impl Node {
     pub fn insert_r(&mut self, node: Node) -> Result<(), ()> {
         self.insert(false, node)
     }
+
+    pub fn is_leaf(&self) -> bool {
+        match (&self.l, &self.r) {
+            (None, None) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Eq for Node {}

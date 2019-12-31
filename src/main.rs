@@ -41,6 +41,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         let compressed = huffman::compress(&content);
         println!("Content size: {}", content.len());
         println!("Compressed size: {}", compressed.len());
+        println!(
+            "Compressed to {:.2}% of original file",
+            compressed.len() as f64 / content.len() as f64 * 100.0
+        );
     } else {
         println!("Decompression feature not implemented yet.");
     }

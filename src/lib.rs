@@ -12,13 +12,19 @@ use structs::{ByteFreq, Info, Node, PqPiece};
 
 pub fn compress(content: &[u8]) -> Box<[u8]> {
     let freq = freq_of_bytes(content);
+
     let freq_pq = map_to_pq(freq);
+
     let tree = pq_to_tree(freq_pq);
+
     let code_map = gen_code_map(tree);
 
     let mut compressed = BitVec::<BigEndian, u8>::new();
     for b in content {
-        compressed.append(&mut code_map.get(&b).unwrap().clone());
+        let code = &code_map.get(&b).unwrap();
+        for bit in code.iter() {
+            compressed.push(*bit);
+        }
     }
 
     compressed.into_boxed_slice()
@@ -42,7 +48,19 @@ fn map_to_pq(map: BTreeMap<u8, usize>) -> BinaryHeap<Reverse<PqPiece>> {
 }
 
 fn pq_to_tree(mut pq: BinaryHeap<Reverse<PqPiece>>) -> Node {
-    while pq.len() > 1 {
+    if pq.len() == 1 {
+        // The file to be compressed only contains repetitions of the same byte
+        let Reverse(a) = pq.pop().unwrap();
+        match a {
+            PqPiece::ByteFreq(bf) => return Node::new(Info::Byte(bf.byte)),
+            PqPiece::Node(_) => panic!(
+                "(internal error) A node was added to the priority queue before \
+                 creating the pq_to_tree function"
+            ),
+        }
+    }
+
+    while pq.len() >= 2 {
         let (Reverse(a), Reverse(b)) = (pq.pop().unwrap(), pq.pop().unwrap());
 
         let (freq_a, freq_b) = (a.get_freq(), b.get_freq());
@@ -64,15 +82,29 @@ fn pq_to_tree(mut pq: BinaryHeap<Reverse<PqPiece>>) -> Node {
     let Reverse(tree) = pq.pop().unwrap();
     match tree {
         PqPiece::Node(node) => node,
-        PqPiece::ByteFreq(_) => {
-            panic!("The last piece remaining of the priority queue should be a node")
-        }
+        PqPiece::ByteFreq(_) => panic!(
+            "(internal error) The last piece remaining of the priority queue should be a node"
+        ),
     }
 }
 
 fn gen_code_map(first: Node) -> HashMap<u8, BitVec> {
     let mut code_map: HashMap<u8, BitVec> = HashMap::new();
     let mut stack: Vec<(Node, BitVec)> = Vec::new();
+
+    if first.is_leaf() {
+        // The file to be compressed only contains repetitions of the same byte
+        if let Info::Byte(b) = first.info {
+            let mut bv: BitVec = BitVec::new();
+            bv.push(false);
+            code_map.insert(b, bv);
+
+            return code_map;
+        } else {
+            panic!("(internal error) The only node of the tree should be a byte");
+        }
+    }
+
     stack.push((first, BitVec::new()));
 
     while let Some(stack_piece) = stack.pop() {
@@ -82,16 +114,19 @@ fn gen_code_map(first: Node) -> HashMap<u8, BitVec> {
         bitvec_l.push(false);
         bitvec_r.push(true);
 
-        let mut is_leaf = |node: Box<Node>, bitvec| {
-            if let Info::Byte(b) = node.info {
+        let mut treat_leaf = |node: Box<Node>, bitvec| match node.info {
+            Info::Byte(b) => {
+                // found a byte while going through the tree
                 code_map.insert(b, bitvec);
-            } else {
+            }
+            Info::Freq(_) => {
+                // keep searching for bytes
                 stack.push((*node, bitvec));
             }
         };
 
-        is_leaf(node_l, bitvec_l);
-        is_leaf(node_r, bitvec_r);
+        treat_leaf(node_l, bitvec_l);
+        treat_leaf(node_r, bitvec_r);
     }
 
     code_map
