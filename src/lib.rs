@@ -1,7 +1,10 @@
 extern crate bitvec;
 extern crate clap;
+extern crate num_cpus;
+extern crate rayon;
 
 use bitvec::prelude::*;
+use rayon::prelude::*;
 
 pub mod structs;
 
@@ -10,8 +13,8 @@ use std::collections::{BTreeMap, BinaryHeap, HashMap};
 
 use structs::{ByteFreq, Info, Node, PqPiece};
 
-pub fn compress(content: &[u8]) -> Box<[u8]> {
-    let freq = freq_of_bytes(content);
+pub fn compress(content: &[u8], threads: usize) -> Box<[u8]> {
+    let freq = freq_of_bytes(content, threads);
 
     let freq_pq = map_to_pq(freq);
 
@@ -19,6 +22,8 @@ pub fn compress(content: &[u8]) -> Box<[u8]> {
 
     let code_map = gen_code_map(tree);
 
+    // TODO: Parallelize this operation
+    // possibly use rayon's fold
     let mut compressed = BitVec::<BigEndian, u8>::new();
     for b in content {
         let code = &code_map.get(&b).unwrap();
@@ -30,7 +35,19 @@ pub fn compress(content: &[u8]) -> Box<[u8]> {
     compressed.into_boxed_slice()
 }
 
-fn freq_of_bytes(content: &[u8]) -> BTreeMap<u8, usize> {
+fn freq_of_bytes(content: &[u8], threads: usize) -> BTreeMap<u8, usize> {
+    if threads == 1 {
+        freq(content)
+    } else {
+        content
+            .par_chunks(content.len() / threads)
+            .map(|x| freq(x))
+            .reduce_with(combine)
+            .unwrap_or(BTreeMap::new())
+    }
+}
+
+fn freq(content: &[u8]) -> BTreeMap<u8, usize> {
     let mut freq: BTreeMap<u8, usize> = BTreeMap::new();
 
     for &b in content {
@@ -38,6 +55,14 @@ fn freq_of_bytes(content: &[u8]) -> BTreeMap<u8, usize> {
     }
 
     freq
+}
+
+fn combine(mut m1: BTreeMap<u8, usize>, m2: BTreeMap<u8, usize>) -> BTreeMap<u8, usize> {
+    for (key, val) in m2.iter() {
+        *m1.entry(*key).or_insert(0) += *val;
+    }
+
+    m1
 }
 
 fn map_to_pq(map: BTreeMap<u8, usize>) -> BinaryHeap<Reverse<PqPiece>> {

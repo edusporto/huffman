@@ -38,7 +38,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     f.read_to_end(&mut content)?;
 
     if !matches.is_present("decompress") {
-        let compressed = huffman::compress(&content);
+        let threads = num_cpus::get();
+        let compressed = huffman::compress(&content, threads);
         println!("Content size: {}", content.len());
         println!("Compressed size: {}", compressed.len());
         println!(
