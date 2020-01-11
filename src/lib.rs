@@ -9,7 +9,7 @@ use rayon::prelude::*;
 pub mod structs;
 
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, BinaryHeap, HashMap};
+use std::collections::{BTreeMap, BinaryHeap};
 
 use structs::{ByteFreq, Info, Node, PqPiece};
 
@@ -22,11 +22,9 @@ pub fn compress(content: &[u8], threads: usize) -> Box<[u8]> {
 
     let code_map = gen_code_map(tree);
 
-    // TODO: Parallelize this operation
-    // possibly use rayon's fold
-    let mut compressed = BitVec::<BigEndian, u8>::new();
-    for b in content {
-        let code = &code_map.get(&b).unwrap();
+    let mut compressed = BitVec::<Msb0, u8>::new();
+    for &b in content {
+        let code = &code_map[b as usize];
         for bit in code.iter() {
             compressed.push(*bit);
         }
@@ -43,7 +41,7 @@ fn freq_of_bytes(content: &[u8], threads: usize) -> BTreeMap<u8, usize> {
             .par_chunks(content.len() / threads)
             .map(|x| freq(x))
             .reduce_with(combine)
-            .unwrap_or(BTreeMap::new())
+            .unwrap_or_default()
     }
 }
 
@@ -113,8 +111,10 @@ fn pq_to_tree(mut pq: BinaryHeap<Reverse<PqPiece>>) -> Node {
     }
 }
 
-fn gen_code_map(first: Node) -> HashMap<u8, BitVec> {
-    let mut code_map: HashMap<u8, BitVec> = HashMap::new();
+fn gen_code_map(first: Node) -> Vec<BitVec> {
+    // Using a Vec as the map is more performant than using a HashMap
+    // or BTreeMap and does not have significant memory usage impacts
+    let mut code_vec: Vec<BitVec> = vec![BitVec::new(); 256];
     let mut stack: Vec<(Node, BitVec)> = Vec::new();
 
     if first.is_leaf() {
@@ -122,9 +122,9 @@ fn gen_code_map(first: Node) -> HashMap<u8, BitVec> {
         if let Info::Byte(b) = first.info {
             let mut bv: BitVec = BitVec::new();
             bv.push(false);
-            code_map.insert(b, bv);
+            code_vec[b as usize] = bv;
 
-            return code_map;
+            return code_vec;
         } else {
             panic!("(internal error) The only node of the tree should be a byte");
         }
@@ -142,7 +142,7 @@ fn gen_code_map(first: Node) -> HashMap<u8, BitVec> {
         let mut treat_leaf = |node: Box<Node>, bitvec| match node.info {
             Info::Byte(b) => {
                 // found a byte while going through the tree
-                code_map.insert(b, bitvec);
+                code_vec[b as usize] = bitvec;
             }
             Info::Freq(_) => {
                 // keep searching for bytes
@@ -154,5 +154,5 @@ fn gen_code_map(first: Node) -> HashMap<u8, BitVec> {
         treat_leaf(node_r, bitvec_r);
     }
 
-    code_map
+    code_vec
 }

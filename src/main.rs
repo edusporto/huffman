@@ -21,6 +21,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .help("Decompresses the input file"),
         )
         .arg(
+            Arg::with_name("threads")
+                .short("t")
+                .long("threads")
+                .value_name("THREAD_AM0UNT")
+                .help("Sets the amount of threads to use")
+                .help("Default is the amount of cores the CPU has")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("output")
                 .short("o")
                 .long("output")
@@ -38,7 +47,26 @@ fn main() -> Result<(), Box<dyn Error>> {
     f.read_to_end(&mut content)?;
 
     if !matches.is_present("decompress") {
-        let threads = num_cpus::get();
+        let threads = match matches.value_of("threads") {
+            Some(t) => {
+                let t = t.parse::<usize>();
+                let cpus = num_cpus::get();
+                match t {
+                    Ok(t) => {
+                        if t > cpus {
+                            Err(format!("There are only {} threads avaiable", cpus))
+                        } else if t < 1 {
+                            Err(format!("Unexpected amount of threads {}", t))
+                        } else {
+                            Ok(t)
+                        }
+                    }
+                    Err(e) => Err(format!("Number of threads not valid: {}", e)),
+                }?
+            }
+            None => num_cpus::get(),
+        };
+
         let compressed = huffman::compress(&content, threads);
         println!("Content size: {}", content.len());
         println!("Compressed size: {}", compressed.len());
