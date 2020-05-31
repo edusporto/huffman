@@ -1,5 +1,10 @@
 use std::cmp::Ordering;
 
+pub struct CompressedBuffer {
+    pub tree: Node,
+    pub bits: Box<[u8]>,
+}
+
 /// Defines what can be stored inside a Node.
 /// The Huffman tree in this program consists of nodes that
 /// are either bytes or usizes which represent the added frequencies
