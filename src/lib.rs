@@ -114,16 +114,16 @@ fn pq_to_tree(mut pq: BinaryHeap<Reverse<PqPiece>>) -> Node {
     }
 }
 
-fn gen_code_map(first: Node) -> Vec<BitVec> {
+fn gen_code_map(first: Node) -> Vec<BitVec<Msb0, u8>> {
     // Using a Vec as the map is more performant than using a HashMap
     // or BTreeMap and does not have significant memory usage impacts
-    let mut code_vec: Vec<BitVec> = vec![BitVec::new(); 256];
-    let mut stack: Vec<(Node, BitVec)> = Vec::new();
+    let mut code_vec: Vec<BitVec<Msb0, u8>> = vec![BitVec::new(); 256];
+    let mut stack: Vec<(Node, BitVec<Msb0, u8>)> = Vec::new();
 
     if first.is_leaf() {
         // The file to be compressed only contains repetitions of the same byte
         if let Info::Byte(b) = first.info {
-            let mut bv: BitVec = BitVec::new();
+            let mut bv = BitVec::<Msb0, u8>::new();
             bv.push(false);
             code_vec[b as usize] = bv;
 
