@@ -52,10 +52,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             let compressed = huffman::compress(&content, threads);
 
             println!("Content size: {}", content.len());
-            println!("Compressed size: {}", compressed.len());
+            println!("Compressed size: {}", compressed.bits.len());
             println!(
                 "Compressed to {:.2}% of original file",
-                compressed.len() as f64 / content.len() as f64 * 100.0
+                compressed.bits.len() as f64 / content.len() as f64 * 100.0
             );
         }
         true => {

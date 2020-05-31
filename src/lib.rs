@@ -11,16 +11,16 @@ pub mod structs;
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap};
 
-use structs::{ByteFreq, Info, Node, PqPiece};
+use structs::{ByteFreq, CompressedBuffer, Info, Node, PqPiece};
 
-pub fn compress(content: &[u8], threads: usize) -> Box<[u8]> {
+pub fn compress(content: &[u8], threads: usize) -> CompressedBuffer {
     let freq = freq_of_bytes(content, threads);
 
     let freq_pq = map_to_pq(freq);
 
     let tree = pq_to_tree(freq_pq);
 
-    let code_map = gen_code_map(tree);
+    let code_map = gen_code_map(tree.clone());
 
     let mut compressed = BitVec::<Msb0, u8>::new();
     for &b in content {
@@ -30,7 +30,10 @@ pub fn compress(content: &[u8], threads: usize) -> Box<[u8]> {
         }
     }
 
-    compressed.into_boxed_slice()
+    CompressedBuffer {
+        tree,
+        bits: compressed.into_boxed_slice(),
+    }
 }
 
 fn freq_of_bytes(content: &[u8], threads: usize) -> BTreeMap<u8, usize> {
