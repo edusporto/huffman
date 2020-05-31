@@ -15,7 +15,7 @@ pub enum Info {
     Freq(usize),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node {
     pub info: Info,
     pub l: Option<Box<Node>>,
