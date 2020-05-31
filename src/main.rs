@@ -46,21 +46,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut content = Vec::new();
     f.read_to_end(&mut content)?;
 
-    match matches.is_present("decompress") {
-        false => {
-            let threads = get_threads(&matches)?;
-            let compressed = huffman::compress(&content, threads);
+    if matches.is_present("decompress") {
+        println!("Decompression feature not implemented yet.");
+    } else {
+        let threads = get_threads(&matches)?;
+        let compressed = huffman::compress(&content, threads);
 
-            println!("Content size: {}", content.len());
-            println!("Compressed size: {}", compressed.bits.len());
-            println!(
-                "Compressed to {:.2}% of original file",
-                compressed.bits.len() as f64 / content.len() as f64 * 100.0
-            );
-        }
-        true => {
-            println!("Decompression feature not implemented yet.");
-        }
+        println!("Content size: {}", content.len());
+        println!("Compressed size: {}", compressed.bits.len());
+        println!(
+            "Compressed to {:.2}% of original file",
+            compressed.bits.len() as f64 / content.len() as f64 * 100.0
+        );
     }
 
     Ok(())
