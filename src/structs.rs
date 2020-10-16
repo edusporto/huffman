@@ -14,6 +14,10 @@ impl CompressedBits {
     pub fn len(&self) -> usize {
         self.container.iter().map(|bv| bv.len()).sum()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.container.iter().map(|bv| bv.len()).sum::<usize>() == 0
+    }
 }
 
 /// Defines what can be stored inside a Node.

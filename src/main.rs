@@ -50,14 +50,27 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("Decompression feature not implemented yet.");
     } else {
         let threads = get_threads(&matches)?;
-        let compressed = huffman::compress(&content, threads);
+        let compressed = huffman::compress(&content, threads).into_bitvec();
 
         println!("Content size: {}", content.len());
-        println!("Compressed size: {}", compressed.bits.len() / 8);
+        println!("Compressed size: {}", compressed.len() / 8);
         println!(
             "Compressed to {:.2}% of original file",
-            (compressed.bits.len() / 8) as f64 / content.len() as f64 * 100.0
+            (compressed.len() / 8) as f64 / content.len() as f64 * 100.0
         );
+
+        println!("Saving file to {}", matches.value_of("output").unwrap());
+
+        let file_name = matches.value_of("output").unwrap();
+
+        match File::create(file_name) {
+            Ok(mut file) => {
+                if let Err(err) = file.write_all(compressed.into_boxed_slice().as_ref()) {
+                    return Err(format!("Could not write to file {}", err).into());
+                }
+            }
+            Err(err) => return Err(format!("Could create file {}", err).into()),
+        };
     }
 
     Ok(())
@@ -75,6 +88,11 @@ pub fn get_threads(matches: &ArgMatches) -> Result<usize, String> {
                     } else if t < 1 {
                         Err(format!("Unexpected amount of threads {}", t))
                     } else {
+                        rayon::ThreadPoolBuilder::new()
+                            .num_threads(t)
+                            .build_global()
+                            .unwrap();
+
                         Ok(t)
                     }
                 }

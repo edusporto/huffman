@@ -22,29 +22,7 @@ pub fn compress(content: &[u8], threads: usize) -> CompressedBuffer {
 
     let code_map = gen_code_map(tree.clone());
 
-    let mut compressed_vec: Vec<(usize, BitVec<Msb0, u8>)> = content
-        .par_chunks(content.len() / threads)
-        .enumerate()
-        .map(|(i, chunk)| {
-            let mut compressed_chunk = BitVec::<Msb0, u8>::new();
-
-            for &b in chunk {
-                let code = &code_map[b as usize];
-
-                for bit in code.iter() {
-                    compressed_chunk.push(*bit);
-                }
-            }
-
-            (i, compressed_chunk)
-        })
-        .collect();
-
-    compressed_vec.sort();
-
-    let compressed = CompressedBits {
-        container: compressed_vec.into_iter().map(|tuple| tuple.1).collect(),
-    };
+    let compressed = compress_bits(content, &code_map, threads);
 
     CompressedBuffer {
         tree,
@@ -52,22 +30,62 @@ pub fn compress(content: &[u8], threads: usize) -> CompressedBuffer {
     }
 }
 
-// impl CompressedBuffer {
-//     pub fn into_boxed_slice(self) -> Box<[u8]> {
-//         todo!();
-//     }
-// }
+impl CompressedBuffer {
+    pub fn into_bitvec(self) -> BitVec<Msb0, u8> {
+        let mut compressed = BitVec::<Msb0, u8>::new();
+
+        let compressed_tree = compress_tree(self.tree);
+        let compressed_bits = self.bits;
+
+        compressed_tree.iter().for_each(|&bit| compressed.push(bit));
+        for bits in compressed_bits.container.iter() {
+            bits.iter().for_each(|&bit| compressed.push(bit));
+        }
+
+        compressed
+    }
+}
+
+pub fn compress_tree(tree: Node) -> BitVec<Msb0, u8> {
+    let mut compressed = BitVec::<Msb0, u8>::new();
+    let mut stack = vec![tree];
+
+    while let Some(node) = stack.pop() {
+        if node.is_leaf() {
+            compressed.push(true);
+
+            if let Info::Byte(byte) = node.info {
+                for i in [128, 64, 32, 16, 8, 4, 2, 1].iter() {
+                    // push each of the byte's bits to the bitvec
+                    compressed.push(byte & i > 0);
+                }
+            } else {
+                panic!(
+                    "(internal error) All of the leaf nodes from the tree should contain a byte"
+                );
+            }
+        } else {
+            compressed.push(false);
+        }
+
+        if let Some(node_l) = node.l {
+            stack.push(*node_l);
+        }
+
+        if let Some(node_r) = node.r {
+            stack.push(*node_r);
+        }
+    }
+
+    compressed
+}
 
 fn freq_of_bytes(content: &[u8], threads: usize) -> BTreeMap<u8, usize> {
-    if threads == 1 {
-        freq(content)
-    } else {
-        content
-            .par_chunks(content.len() / threads)
-            .map(|x| freq(x))
-            .reduce_with(combine)
-            .unwrap_or_default()
-    }
+    content
+        .par_chunks(content.len() / threads)
+        .map(|x| freq(x))
+        .reduce_with(combine)
+        .unwrap_or_default()
 }
 
 fn freq(content: &[u8]) -> BTreeMap<u8, usize> {
@@ -182,17 +200,28 @@ fn gen_code_map(first: Node) -> Vec<BitVec<Msb0, u8>> {
     code_vec
 }
 
-fn compress_tree(tree: Node) -> BitVec<Msb0, u8> {
-    let mut compressed = BitVec::<Msb0, u8>::new();
-    let mut stack = vec![tree];
+fn compress_bits(content: &[u8], code_map: &[BitVec<Msb0, u8>], threads: usize) -> CompressedBits {
+    let mut compressed_vec: Vec<(usize, BitVec<Msb0, u8>)> = content
+        .par_chunks(content.len() / threads)
+        .enumerate()
+        .map(|(i, chunk)| {
+            let mut compressed_chunk = BitVec::<Msb0, u8>::new();
 
-    while let Some(node) = stack.pop() {
-        if node.is_leaf() {
-            compressed.push(true);
+            for &b in chunk {
+                let code = &code_map[b as usize];
 
-            todo!();
-        }
+                for bit in code.iter() {
+                    compressed_chunk.push(*bit);
+                }
+            }
+
+            (i, compressed_chunk)
+        })
+        .collect();
+
+    compressed_vec.sort();
+
+    CompressedBits {
+        container: compressed_vec.into_iter().map(|tuple| tuple.1).collect(),
     }
-
-    compressed
 }
