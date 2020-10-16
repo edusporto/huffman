@@ -1,8 +1,19 @@
+use bitvec::prelude::*;
 use std::cmp::Ordering;
 
 pub struct CompressedBuffer {
     pub tree: Node,
-    pub bits: Box<[u8]>,
+    pub bits: CompressedBits,
+}
+
+pub struct CompressedBits {
+    pub container: Vec<BitVec<Msb0, u8>>,
+}
+
+impl CompressedBits {
+    pub fn len(&self) -> usize {
+        self.container.iter().map(|bv| bv.len()).sum()
+    }
 }
 
 /// Defines what can be stored inside a Node.

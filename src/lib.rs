@@ -11,7 +11,7 @@ pub mod structs;
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap};
 
-use structs::{ByteFreq, CompressedBuffer, Info, Node, PqPiece};
+use structs::{ByteFreq, CompressedBits, CompressedBuffer, Info, Node, PqPiece};
 
 pub fn compress(content: &[u8], threads: usize) -> CompressedBuffer {
     let freq = freq_of_bytes(content, threads);
@@ -22,19 +22,41 @@ pub fn compress(content: &[u8], threads: usize) -> CompressedBuffer {
 
     let code_map = gen_code_map(tree.clone());
 
-    let mut compressed = BitVec::<Msb0, u8>::new();
-    for &b in content {
-        let code = &code_map[b as usize];
-        for bit in code.iter() {
-            compressed.push(*bit);
-        }
-    }
+    let mut compressed_vec: Vec<(usize, BitVec<Msb0, u8>)> = content
+        .par_chunks(content.len() / threads)
+        .enumerate()
+        .map(|(i, chunk)| {
+            let mut compressed_chunk = BitVec::<Msb0, u8>::new();
+
+            for &b in chunk {
+                let code = &code_map[b as usize];
+
+                for bit in code.iter() {
+                    compressed_chunk.push(*bit);
+                }
+            }
+
+            (i, compressed_chunk)
+        })
+        .collect();
+
+    compressed_vec.sort();
+
+    let compressed = CompressedBits {
+        container: compressed_vec.into_iter().map(|tuple| tuple.1).collect(),
+    };
 
     CompressedBuffer {
         tree,
-        bits: compressed.into_boxed_slice(),
+        bits: compressed,
     }
 }
+
+// impl CompressedBuffer {
+//     pub fn into_boxed_slice(self) -> Box<[u8]> {
+//         todo!();
+//     }
+// }
 
 fn freq_of_bytes(content: &[u8], threads: usize) -> BTreeMap<u8, usize> {
     if threads == 1 {
@@ -158,4 +180,19 @@ fn gen_code_map(first: Node) -> Vec<BitVec<Msb0, u8>> {
     }
 
     code_vec
+}
+
+fn compress_tree(tree: Node) -> BitVec<Msb0, u8> {
+    let mut compressed = BitVec::<Msb0, u8>::new();
+    let mut stack = vec![tree];
+
+    while let Some(node) = stack.pop() {
+        if node.is_leaf() {
+            compressed.push(true);
+
+            todo!();
+        }
+    }
+
+    compressed
 }
